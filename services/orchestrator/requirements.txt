@@ -1,0 +1,13 @@
+fastapi
+uvicorn
+httpx
+pydantic-settings
+sqlalchemy
+asyncpg
+langgraph
+langchain-openai
+langfuse
+openai
+pyJWT
+cryptography
+prometheus-fastapi-instrumentator
