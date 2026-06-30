@@ -4,6 +4,10 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 5.0"
     }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.6"
+    }
   }
 }
 
@@ -12,6 +16,22 @@ provider "aws" {
 }
 
 data "aws_caller_identity" "current" {}
+
+resource "random_password" "db" {
+  length           = 24
+  special          = true
+  override_special = "!#$%&*()-_=+[]{}"
+}
+
+resource "random_string" "bucket_suffix" {
+  length  = 6
+  upper   = false
+  special = false
+}
+
+locals {
+  effective_db_password = var.db_password != null ? var.db_password : random_password.db.result
+}
 
 module "vpc" {
   source  = "terraform-aws-modules/vpc/aws"
@@ -91,11 +111,11 @@ module "eks" {
 
   eks_managed_node_groups = {
     default = {
-      instance_types = ["t3.medium"]
+      instance_types = ["t3.micro"]
 
       min_size     = 1
-      max_size     = 3
-      desired_size = 2
+      max_size     = 2
+      desired_size = 1
     }
   }
 
@@ -173,7 +193,7 @@ resource "aws_db_instance" "postgres" {
   allocated_storage = 20
   db_name           = "codereviewer"
   username          = "dbadmin"
-  password          = var.db_password
+  password          = local.effective_db_password
   multi_az          = false
   publicly_accessible = false
   skip_final_snapshot = true
@@ -252,7 +272,7 @@ resource "aws_iam_role_policy_attachment" "lbc" {
 }
 
 resource "aws_s3_bucket" "reports" {
-  bucket = "ai-code-reviewer-reports"
+  bucket = "${var.cluster_name}-reports-${random_string.bucket_suffix.result}"
 
   tags = {
     Environment = var.environment
